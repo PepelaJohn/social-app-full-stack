@@ -24,20 +24,11 @@ const postSchema = mongoose.Schema(
         ref: "User",
       },
     ],
-    replies: [
-      {
-        user: {
-          name: String,
-          username: String,
-          id: {
-            type: mongoose.Types.ObjectId,
-            ref: "User",
-          },
-        },
-        text: String,
-        created: Date,
-      },
-    ],
+    replies: {
+      type:[mongoose.Types.ObjectId],
+      default:[],
+      ref:'Comment'
+    },
 
     retweets: [
       {

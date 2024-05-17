@@ -4,18 +4,18 @@ import express from "express";
 
 import Post from "../models/Post.js";
 import User from "../models/User.js";
+import Comment from "../models/Comment.js";
 import mongoose from "mongoose";
 const router = express.Router();
 
 export const getPost = async (req, res) => {
-
   try {
     const post = await Post.findById(req.params.id);
 
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
-   
+
     res.status(200).json(post);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -29,7 +29,7 @@ export const getPosts = async (req, res) => {
     res.status(200).json(posts);
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message:error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -56,9 +56,6 @@ export const createPost = async (req, res) => {
 export const likeUnlikePost = async (req, res) => {
   const userLikingId = req._id;
   const postId = req.params.postId;
-
-
-  
 
   if (!postId) return res.status(401).json({ message: "Unauthorized" });
 
@@ -89,38 +86,58 @@ export const likeUnlikePost = async (req, res) => {
 };
 
 export const replyToPost = async (req, res) => {
-  const { text } = req.body;
-  // console.log(text);
+  const { text,name, parent } = req.body;
+
   const replyingUserId = req._id;
   const replyingUserName = req.username;
-
-  const { name } = req.body;
   const postId = req.params.postId;
   if (!name || !replyingUserId || !text || !postId || !replyingUserName)
     return res.status(400).json({ message: "Bad request" });
 
   try {
-    const currentPost = await Post.findOne({ _id: postId });
-    if (!currentPost)
-    return res.status(500).json({ message: error.message });
+    let currentPost;
+    if (parent === "comment") {
+      currentPost = await Comment.findOne({ _id: postId });
+      if (!currentPost)
+        return res.status(404).json({ message: "No post found" });
+    } else {
+      currentPost = await Post.findOne({ _id: postId });
+      if (!currentPost)
+        return res.status(404).json({ message: "No post found" });
+    }
 
-    const reply = {
+    // const reply = {
+    //   user: {
+    //     name: name,
+    //     username: replyingUserName,
+    //     id: replyingUserId,
+    //     created: new Date(),
+    //   },
+    //   text: text,
+    // };
+    // // console.log(new Date())
+
+    const comment = new Comment({
+      parentId: postId,
       user: {
         name: name,
         username: replyingUserName,
         id: replyingUserId,
-        created: new Date(),
       },
-      text: text,
-    };
-    // console.log(new Date())
-    // console.log(currentPost)
-    currentPost.replies.unshift(reply);
-    const post = await currentPost.save();
+      text,
+    });
+    await comment.save();
+    let post;
+    currentPost.replies.unshift(comment._id);
+    console.log(currentPost.replies);
+    post = await currentPost.save()
+
+    
+    parent === "comment" && (post = {});
     return res.status(201).json(post);
   } catch (error) {
     console.log(error);
-     return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
@@ -181,22 +198,20 @@ export const getFeed = async (req, res) => {
   if (!_id) return res.status(204).json([]);
 
   try {
-    const user =await User.findById(_id);
+    const user = await User.findById(_id);
     if (!user) return res.status(204).json([]);
-    
-    
-    
+
     const feedPosts = await Post.find({
       $or: [
         { "creator.creatorId": { $in: user.following } },
         { _id: { $in: user.saves } },
       ],
     }).limit(10);
-    if (feedPosts.length<1){
-      const otherPosts = await Post.find().sort('createdAt').limit(10)
-      return res.status(200).json(otherPosts)
+    if (feedPosts.length < 1) {
+      const otherPosts = await Post.find().sort("createdAt").limit(10);
+      return res.status(200).json(otherPosts);
     }
-   
+
     return res.status(200).json(feedPosts);
   } catch (error) {
     console.log(error.message);
@@ -206,7 +221,7 @@ export const getFeed = async (req, res) => {
 
 export const getProfilePosts = async (req, res) => {
   const userId = req.params.id;
-  console.log('passing through getprofileposts');
+  console.log("passing through getprofileposts");
   if (!userId) return res.status(401).json({ message: "Bad Request" });
   try {
     const profilePosts = await Post.find({ "creator.creatorId": userId }).sort({
@@ -220,15 +235,32 @@ export const getProfilePosts = async (req, res) => {
 };
 export const getSavedPosts = async (req, res) => {
   const userId = req._id;
-  console.log('passing through getsaved', userId);
+  console.log("passing through getsaved", userId);
   if (!userId) return res.status(401).json({ message: "Bad Request" });
   try {
-    const user = await User.findOne({_id:userId})
-    if(!user) return res.status(404).json({message:"No user found"})
-    const savedPosts = await Post.find({ _id:{$in:user.saves} }).sort({
+    const user = await User.findOne({ _id: userId });
+    if (!user) return res.status(404).json({ message: "No user found" });
+    const savedPosts = await Post.find({ _id: { $in: user.saves } }).sort({
       createdAt: -1,
     });
     return res.status(200).json(savedPosts);
+  } catch (error) {
+    console.log("error in the getsavedposts", error.message);
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+export const getComments = async (req, res) => {
+  const { parentId } = req.params;
+  if (!parentId || !mongoose.isValidObjectId(parentId)) return res.status(400);
+
+  try {
+    const comments = await Comment.find({ parentId }).populate({
+      path: "user.id",
+      select: "profilePic",
+      model: "User",
+    });
+    return res.status(200).json(comments);
   } catch (error) {
     console.log("error in the getsavedposts", error.message);
     return res.status(500).json({ message: error.message });

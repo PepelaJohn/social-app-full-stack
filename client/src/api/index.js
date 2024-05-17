@@ -40,6 +40,8 @@ export const createPost = (data) =>
 
 export const replyPost = (id, data) =>
   API(`${posturl}/reply/${id}`, { method: "post", authheaders, data });
+export const fetchPostReply = (id) =>
+  API(`${posturl}/reply/${id}`, { method: "get", authheaders });
 
 export const retweetPost = (data) =>
   API(`${posturl}/retweet`, { method: "post", authheaders, data });

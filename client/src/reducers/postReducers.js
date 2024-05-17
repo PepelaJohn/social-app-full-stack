@@ -17,9 +17,12 @@ export default (posts = [], action) => {
       return [action.payload, ...posts];
     case REPLY_POST:
       // console.log(action.payload);
-      return posts.map((post) =>
-        post._id === action.payload._id ? action.payload : post
-      );
+
+      return Object.entries(action?.payload).length
+        ? posts.map((post) =>
+            post._id === action.payload._id ? action.payload : post
+          )
+        : posts;
 
     case FETCH_ALL:
       return action.payload;

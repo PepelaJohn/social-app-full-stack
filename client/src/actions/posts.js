@@ -22,8 +22,8 @@ export const getPost = () => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.log(error);
@@ -46,8 +46,8 @@ export const getMorePosts = (start) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.log(error);
@@ -63,8 +63,8 @@ export const createPost = (post) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
 
@@ -81,8 +81,8 @@ export const deletePost = (id) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.log(error);
@@ -96,8 +96,8 @@ export const likePost = (id) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.log(error);
@@ -112,8 +112,8 @@ export const updatePost = (id) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.log(error);
@@ -129,13 +129,36 @@ export const replyPost = (id, textdata) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.warn(error);
   }
 };
+
+export const fetchPostReply =
+  (id, setComments, setLoading = () => {}) =>
+  async (dispatch) => {
+    console.log("starting");
+    try {
+      setLoading(true);
+      const { data } = await api.fetchPostReply(id);
+      setLoading(false);
+
+      console.log(data, "fetchpostreplies");
+      setComments(data);
+    } catch (error) {
+      dispatch({
+        type: ERROR,
+        payload:
+          error.response?.data?.message ||
+          error.message ||
+          "Unknown Error occured",
+      });
+      console.warn(error);
+    }
+  };
 
 export const retweetPost = (post) => async (dispatch) => {
   try {
@@ -146,27 +169,24 @@ export const retweetPost = (post) => async (dispatch) => {
     dispatch({
       type: ERROR,
       payload:
-        error.message ||
         error.response?.data?.message ||
+        error.message ||
         "Unknown Error occured",
     });
     console.warn(error);
   }
 };
 
-
-export const getRecommendedPosts = ()=> async(dispatch)=>{
+export const getRecommendedPosts = () => async (dispatch) => {
   try {
-    const {data} = await api.getFeedPosts()
+    const { data } = await api.getFeedPosts();
     console.log(data);
-    dispatch({type:FETCH_ALL, payload:data })
+    dispatch({ type: FETCH_ALL, payload: data });
   } catch (error) {
     dispatch({
       type: ERROR,
-      payload:
-        
-        "Unknown Error occured Please Refresh",
+      payload: "Unknown Error occured Please Refresh",
     });
     console.warn(error);
   }
-}
+};

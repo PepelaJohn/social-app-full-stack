@@ -10,10 +10,16 @@ import { IoIosArrowDown as CaretDown } from "react-icons/io";
 import { IoIosArrowUp as CaretUp } from "react-icons/io";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { likePost, replyPost, retweetPost } from "../actions/posts";
+import {
+  fetchPostReply,
+  likePost,
+  replyPost,
+  retweetPost,
+} from "../actions/posts";
 import { savePost } from "../actions/users";
 import CommentCard from "./CommentCard";
 import PostDetailsCard from "./PostDetailsCard";
+import { ERROR } from "../constants";
 
 const PostCard = ({ post }) => {
   const user = useSelector((state) => state.user);
@@ -22,14 +28,19 @@ const PostCard = ({ post }) => {
   const [bookmarked, setBookMarked] = useState(post.saves.includes(user?.id));
   const [commentState, setCommentState] = useState(false);
   const [liked, setliked] = useState(post.likes.includes(user.id || user._id));
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState({ text: "", image: "" });
+
+  const [topLevelComments, setTopLevelComments] = useState([]);
   const handleLike = () => {
     if (user.id || user._id) setliked(post.likes.includes(user.id || user._id));
     if (user.id || user._id) dispatch(likePost(post._id));
   };
 
   const handleChange = (e) => {
-    setComment(e.target.value);
+    setComment((prev)=>({
+      ...prev,
+      [e.target.name]:e.target.value
+    }));
   };
 
   const handleBookMark = () => {
@@ -54,18 +65,19 @@ const PostCard = ({ post }) => {
 
   const handleComment = (e) => {
     e.preventDefault();
-
-    if ((user.id || user._id) && comment) {
+    console.log("gakldjglkdf");
+    if ((user.id || user._id) && (comment.text || comment.image)) {
+      console.log(comment.text);
       const data = {
-        text: comment,
+        ...comment,
         name: user.name,
       };
 
       dispatch(replyPost(post._id, data));
       setCommentState(false);
-      setComment("");
+      setComment({ text: "", image: "" });
     } else {
-      console.log("Please Login");
+      dispatch({ type: ERROR, payload: "Please try at some other time!!" });
     }
   };
 
@@ -78,16 +90,23 @@ const PostCard = ({ post }) => {
     // console.log(post.saves.includes(user.id || user._id), post._id);
   }, [post.saves]);
 
+  useEffect(() => {
+    if (commentState && !!post.replies.length) {
+      dispatch(fetchPostReply(post._id, setTopLevelComments));
+    }
+    console.log(topLevelComments);
+  }, [commentState]);
+
   return (
     <div className="w-full flex flex-col bg-dark gap-1  mb-10 bg-border rounded-lg  ">
       {post.isRetweet && (
-        <div className="text-xs p-3 flex capitalize gap-2 items-center text-gray-400 font-extralight">
+        <div className="text-[10px] px-2 mt-1 flex capitalize gap-2 items-center text-gray-400 font-extralight">
           <RePost />{" "}
           {user.name === post.creator.name ? "You " : post.creator.name}{" "}
           reposted
         </div>
       )}
-      <div className="flex items-center p-5">
+      <div className="flex  items-center py-1 px-2">
         <Link to={`/profile/${post.creator.creatorId}`}>
           {
             <div className="rounded-full items-center flex flex-col justify-center h-10 w-10 cursor-pointer overflow-hidden bg-gray-200 relative">
@@ -125,7 +144,7 @@ const PostCard = ({ post }) => {
         </span>
       </div>
 
-      <div className="overflow-hidden justify-end items-center  flex px-5 pb-5 w-full">
+      <div className="overflow-hidden  justify-end items-center  flex pb-2 w-full">
         <img
           src={post.file}
           alt=""
@@ -138,7 +157,7 @@ const PostCard = ({ post }) => {
           {post.title}
         </p>
       </div>
-      <div className="p-5 items-center border-b-2  border-gray-100 flex justify-between">
+      <div className="px-5 py-1  items-center flex justify-between">
         <span
           onClick={handleLike}
           className="flex items-center  min-w-[50px] gap-1 cursor-pointer text-[24px]"
@@ -149,18 +168,18 @@ const PostCard = ({ post }) => {
             <IoIosHeartFull className="text-red-500" />
           )}
           <p className="text-[10px]">
-            {post.likes.length ? post.likes.length : ""}
+            {post?.likes?.length ? post.likes.length : ""}
           </p>
         </span>
         <span
           onClick={() => {
-            if (!!post.replies.length) setCommentState(true);
+            if (!!post?.replies?.length) setCommentState(true);
           }}
           className="cursor-pointer flex items-center min-w-[50px]  gap-1  text-[24px]"
         >
           <Comment />
           <p className="text-[10px]">
-            {post.replies.length ? post.replies.length : ""}
+            {!!post?.replies?.length ? post.replies.length : ""}
           </p>
         </span>
         <span
@@ -169,7 +188,7 @@ const PostCard = ({ post }) => {
         >
           <RePost />
           <p className="text-[10px]">
-            {post.retweets.length ? post.retweets.length : ""}
+            {!!post?.retweets?.length ? post.retweets.length : ""}
           </p>
         </span>
         <span
@@ -178,11 +197,11 @@ const PostCard = ({ post }) => {
         >
           {!bookmarked ? <BookMarkEmpty /> : <BookMarkFilled />}
           <p className="text-[10px]">
-            {post.saves.length ? post.saves.length : ""}
+            {post?.saves?.length ? post.saves.length : ""}
           </p>
         </span>
       </div>
-      <div className="flex flex-col p-5 easeinOut items-start justify-start gap-2  py-4">
+      <div className="flex  flex-col px-5 py-1  easeinOut items-start justify-start gap-2  ">
         <span
           onClick={() => setCommentState(!commentState)}
           className="text-blue-400 flex gap-2 items-center  text-sm cursor-pointer"
@@ -199,7 +218,7 @@ const PostCard = ({ post }) => {
             </>
           ) : (
             <>
-              <CaretUp /> {!!post.replies.length && "Hide Comments"}
+              <CaretUp /> {!!post?.replies?.length && "Hide Comments"}
             </>
           )}
         </span>
@@ -211,8 +230,9 @@ const PostCard = ({ post }) => {
           >
             <input
               onChange={handleChange}
-              value={comment}
+              value={comment.text}
               type="text"
+              name="text"
               placeholder="Add a comment"
               className="h-full pl-5 rounded-lg outline-none border-none bg-transparen w-11/12"
             />
@@ -226,13 +246,13 @@ const PostCard = ({ post }) => {
             </p>
           </div>
         )}
-        {!!post.replies.length && commentState && (
+        {commentState && !!topLevelComments?.length && (
           <div
-            className={`flex flex-col  w-full ${
+            className={`flex flex-col  overflow-x-auto   w-full ${
               user.id || user._id ? "border-t" : ""
             } `}
           >
-            {post.replies?.map((reply, i) => (
+            {topLevelComments?.map((reply, i) => (
               <CommentCard reply={reply} key={i} />
             ))}
           </div>
